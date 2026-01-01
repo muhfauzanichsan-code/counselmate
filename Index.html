@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CounselMate - Layanan BK Digital & Anti-Bullying</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js for Graph (Admin Panel) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Added mobile-specific styles for proper display on all devices */
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F3F4F6;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        #root {
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile-specific optimizations */
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
+            }
+            
+            body {
+                touch-action: pan-y;
+            }
+            
+            /* Prevent zoom on input focus */
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+            
+            /* Ensure proper spacing on mobile */
+            .mobile-container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            /* Better button sizing for touch */
+            button {
+                min-height: 44px;
+                touch-action: manipulation;
+            }
+            
+            /* Prevent horizontal overflow */
+            canvas {
+                max-width: 100%;
+                height: auto !important;
+            }
+        }
+        
+        /* Prevent text selection on double tap */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+const firebaseConfig = {
+            apiKey: "AIzaSyD_r5nijFz4ZB7nyw-IZn4qx5TzvMktL5c",
+            authDomain: "counselmate-cbcd3.firebaseapp.com",
+            projectId: "counselmate-cbcd3",
+            storageBucket: "counselmate-cbcd3.firebasestorage.app",
+            messagingSenderId: "123563416366",
+            appId: "1:123563416366:web:8dfa329f115456d32538bf",
+            measurementId: "G-9N4E21L9GP"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        const MOCK_STUDENTS = [
+            { id: 1, name: "Budi Santoso", class: "X IPA 1", risk: 'Medium', points: 350, lastMood: "😄" },
+            { id: 2, name: "Siti Aisyah", class: "XI IPS 3", risk: 'Low', points: 120, lastMood: "😐" },
+            { id: 3, name: "Rizky Pratama", class: "X IPA 2", risk: 'High', points: 50, lastMood: "😢" },
+            { id: 4, name: "Andi Wijaya", class: "XII IPA 1", risk: 'Medium', points: 210, lastMood: "😡" },
+        ];
+
+        const MOCK_COUNSELORS = [
+            { id: 1, name: "Pak Ahmad Trimulyadi" },
+            { id: 2, name: "Pak Fahmy Zulfikar Ridwan" },
+            { id: 3, name: "Ibu Siti Nurjannah Haryansah Aza" },
+            { id: 4, name: "Pak Muh. Fauzan Ichsan" },
+        ];
+
+        const EDUCATIONAL_CONTENT_FALLBACK = [
+            { 
+                id: 1, 
+                title: "Apa itu Bullying?", 
+                type: "Video", 
+                duration: "3 min", 
+                points: 50, 
+                category: "Dasar", 
+                image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=400",
+                content: `
+                    <h3 class="text-xl font-bold mb-4">Apa itu Bullying?</h3>
+                    <p class="mb-4">Bullying adalah tindakan agresif yang dilakukan secara berulang oleh seseorang atau kelompok terhadap orang lain yang lebih lemah.</p>
+                    <h4 class="font-bold mb-2">Jenis-jenis Bullying:</h4>
+                    <ul class="list-disc ml-6 space-y-2 mb-4">
+                        <li><strong>Fisik:</strong> Memukul, mendorong, merusak barang</li>
+                        <li><strong>Verbal:</strong> Mengejek, menghina, mengancam</li>
+                        <li><strong>Sosial:</strong> Mengucilkan, menyebarkan rumor</li>
+                        <li><strong>Cyberbullying:</strong> Intimidasi melalui media sosial</li>
+                    </ul>
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <p class="text-sm"><strong>Ingat:</strong> Tidak ada alasan yang membenarkan bullying. Setiap orang berhak merasa aman!</p>
+                    </div>
+                `
+            },
+            { 
+                id: 2, 
+                title: "Membangun Empati", 
+                type: "Artikel", 
+                duration: "5 min", 
+                points: 30, 
+                category: "Soft Skill", 
+                image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=400",
+                content: `
+                    <h3 class="text-xl font-bold mb-4">Membangun Empati</h3>
+                    <p class="mb-4">Empati adalah kemampuan untuk memahami dan merasakan apa yang dirasakan orang lain.</p>
+                    <h4 class="font-bold mb-2">Cara Meningkatkan Empati:</h4>
+                    <ol class="list-decimal ml-6 space-y-2 mb-4">
+                        <li><strong>Mendengarkan aktif:</strong> Dengarkan tanpa menghakimi</li>
+                        <li><strong>Membayangkan posisi orang lain:</strong> "Bagaimana jika saya yang mengalami ini?"</li>
+                        <li><strong>Menunjukkan kepedulian:</strong> Tanyakan kabar teman yang terlihat sedih</li>
+                        <li><strong>Menghargai perbedaan:</strong> Setiap orang unik dan berharga</li>
+                    </ol>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <p class="text-sm">💙 <strong>Quote:</strong> "Empati adalah melihat dengan mata orang lain, mendengar dengan telinga orang lain, dan merasakan dengan hati orang lain." - Alfred Adler</p>
+                    </div>
+                `
+            },
+            { 
+                id: 3, 
+                title: "Cara Melapor Aman", 
+                type: "Infografis", 
+                duration: "2 min", 
+                points: 20, 
+                category: "Panduan", 
+                image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=400",
+                content: `
+                    <h3 class="text-xl font-bold mb-4">Cara Melapor Aman</h3>
+                    <p class="mb-4">Melapor adalah langkah berani untuk menghentikan bullying. Berikut panduan melapor dengan aman:</p>
+                    <div class="space-y-4">
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <h5 class="font-bold mb-2">✅ Langkah 1: Kumpulkan Informasi</h5>
+                            <p class="text-sm">Catat tanggal, waktu, tempat, dan saksi jika ada.</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <h5 class="font-bold mb-2">✅ Langkah 2: Pilih Orang Terpercaya</h5>
+                            <p class="text-sm">Lapor ke Guru BK, Wali Kelas, atau Orang Tua.</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <h5 class="font-bold mb-2">✅ Langkah 3: Gunakan Fitur Anonim</h5>
+                            <p class="text-sm">Jika takut, kamu bisa melapor tanpa menyebutkan nama.</p>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <h5 class="font-bold mb-2">⚠️ Yang TIDAK Boleh Dilakukan:</h5>
+                            <ul class="text-sm list-disc ml-4">
+                                <li>Membalas dengan kekerasan</li>
+                                <li>Menyebarkan cerita ke semua orang</li>
+                                <li>Diam saja dan memendam sendiri</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+        ];
+
+        // --- Icons Component Helper ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+        
+        // --- Shared Components ---
+
+        const MoodChart = () => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                const ctx = chartRef.current.getContext('2d');
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+                        datasets: [{
+                            label: 'Tren Mood Mingguan (Mood Score)',
+                            data: [3, 4, 2, 4, 5, 3, 4],
+                            borderColor: '#4F46E5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#4F46E5',
+                            pointRadius: 5,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                max: 5,
+                                min: 1,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        if (value === 5) return 'Sangat Senang 😄';
+                                        if (value === 4) return 'Baik 😊';
+                                        if (value === 3) return 'Biasa 😐';
+                                        if (value === 2) return 'Kurang Baik 😟';
+                                        if (value === 1) return 'Sangat Buruk 😢';
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, []);
+
+            return <canvas ref={chartRef} className="w-full h-72"></canvas>;
+        };
+
+
+        // --- STUDENT: Mini Game Quiz Component ---
+        const MiniGameQuiz = ({ quizData, onQuizComplete }) => {
+            const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [isFinished, setIsFinished] = useState(false);
+            const [score, setScore] = useState(0);
+
+            if (!quizData || quizData.length === 0) {
+                return (
+                    <div className="text-center p-4 sm:p-8">
+                        <div className="text-5xl sm:text-6xl mb-4">📝</div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Belum Ada Soal</h3>
+                        <p className="text-slate-600 mb-4 sm:mb-6">Guru BK belum menambahkan soal quiz. Coba lagi nanti!</p>
+                        <button onClick={() => onQuizComplete(0)} className="w-full sm:w-auto bg-slate-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-700 transition">
+                            Kembali
+                        </button>
+                    </div>
+                );
+            }
+
+            if (isFinished) {
+                return (
+                    <div className="text-center p-4 sm:p-8">
+                        <div className={`text-5xl sm:text-6xl mb-4 ${score === quizData.length ? 'text-green-500' : 'text-yellow-500'}`}>
+                            {score === quizData.length ? "🎉" : "💪"}
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Quiz Selesai!</h3>
+                        <p className="text-slate-600 mb-4 sm:mb-6">Skor akhir kamu:</p>
+                        <div className="text-3xl sm:text-4xl font-extrabold text-indigo-600 mb-6 sm:mb-8">{score} dari {quizData.length} Jawaban Benar</div>
+                        <button onClick={() => onQuizComplete(score * 50)} className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
+                            Klaim {score * 50} Poin & Kembali
+                        </button>
+                    </div>
+                );
+            }
+
+            const currentQuestion = quizData[currentQuestionIndex];
+
+            const handleAnswerSelect = (index) => {
+                setSelectedAnswer(index);
+            };
+
+            const handleNext = () => {
+                if (selectedAnswer !== null) {
+                    if (selectedAnswer === currentQuestion.correctIndex) {
+                        setScore(prev => prev + 1);
+                    }
+                    
+                    if (currentQuestionIndex < quizData.length - 1) {
+                        setCurrentQuestionIndex(prev => prev + 1);
+                        setSelectedAnswer(null);
+                    } else {
+                        setIsFinished(true);
+                    }
+                } else {
+                    alert("Pilih jawabanmu dulu!");
+                }
+            };
+
+            return (
+                <div className="p-4 sm:p-8 bg-white rounded-2xl shadow-xl border-t-4 border-indigo-500">
+                    <div className="text-sm font-semibold text-indigo-600 mb-2">
+                        Pertanyaan {currentQuestionIndex + 1} dari {quizData.length}
+                    </div>
+                    <h4 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6">{currentQuestion.question}</h4>
+
+                    <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                        {currentQuestion.options.map((option, index) => (
+                            <button
+                                key={index}
+                                onClick={() => handleAnswerSelect(index)}
+                                className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition duration-200 
+                                    ${selectedAnswer === index
+                                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700 font-bold shadow-md'
+                                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                    }`
+                                }
+                            >
+                                {String.fromCharCode(65 + index)}. {option}
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={handleNext}
+                        disabled={selectedAnswer === null}
+                        className={`w-full py-3 rounded-xl font-bold transition 
+                            ${selectedAnswer !== null ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`
+                        }
+                    >
+                        {currentQuestionIndex < quizData.length - 1 ? "Lanjut ke Pertanyaan Berikutnya" : "Selesaikan Quiz"}
+                    </button>
+                </div>
+            );
+        };
+
+        const EducationalContentModal = ({ content, onClose, onComplete }) => {
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b border-slate-200 p-4 sm:p-6 flex justify-between items-center">
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-800">{content.title}</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 flex-shrink-0 ml-2">
+                                <Icon name="x" size={24} />
+                            </button>
+                        </div>
+                        <div className="p-4 sm:p-6">
+                            <div className="prose prose-sm sm:prose max-w-none" dangerouslySetInnerHTML={{ __html: content.content }} />
+                        </div>
+                        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 sm:p-6">
+                            <button 
+                                onClick={onComplete}
+                                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition"
+                            >
+                                Selesai Belajar (+{content.points} XP)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- Main App Component ---
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('login');
+            const [selectedRole, setSelectedRole] = useState(null);
+            const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+            const [adminSubView, setAdminSubView] = useState('dashboard');
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+            const [moodHistory, setMoodHistory] = useState([]);
+            const [reports, setReports] = useState([
+                { id: 101, type: "Verbal", desc: "Ejekan di kantin", date: "2025-10-12", status: "Selesai", anonymous: false, student: "Budi Santoso", studentId: 1, title: "Ejekan di kantin" },
+                { id: 102, type: "Fisik", desc: "Dorong-dorongan di koridor", date: "2025-10-13", status: "Pending", anonymous: true, student: "Anonim", studentId: null, title: "Dorong-dorongan di koridor" },
+                { id: 103, type: "Cyberbullying", desc: "Ancaman di media sosial", date: "2025-10-15", status: "Baru", anonymous: false, student: "Rizky Pratama", studentId: 3, title: "Ancaman di media sosial" },
+            ]);
+            const [counselingSessions, setCounselingSessions] = useState([]);
+
+            const [completedContent, setCompletedContent] = useState([]);
+
+            const [selectedContent, setSelectedContent] = useState(null);
+            const [selectedReport, setSelectedReport] = useState(null);
+
+            const [quizQuestions, setQuizQuestions] = useState([]);
+            const [loadingQuiz, setLoadingQuiz] = useState(false);
+
+            const [educationalContent, setEducationalContent] = useState(EDUCATIONAL_CONTENT_FALLBACK);
+            const [loadingContent, setLoadingContent] = useState(false);
+
+            useEffect(() => {
+                loadQuizQuestions();
+                loadEducationalContent();
+            }, []);
+
+            const loadQuizQuestions = async () => {
+                try {
+                    setLoadingQuiz(true);
+                    const snapshot = await db.collection('quiz_questions').orderBy('createdAt', 'desc').get();
+                    const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setQuizQuestions(questions);
+                } catch (error) {
+                    console.error('Error loading quiz questions:', error);
+                } finally {
+                    setLoadingQuiz(false);
+                }
+            };
+
+            const loadEducationalContent = async () => {
+                try {
+                    setLoadingContent(true);
+                    const snapshot = await db.collection('educational_content').orderBy('createdAt', 'desc').get();
+                    const contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Jika ada konten di database, gunakan itu. Jika tidak, gunakan fallback
+                    if (contents.length > 0) {
+                        setEducationalContent(contents);
+                    } else {
+                        setEducationalContent(EDUCATIONAL_CONTENT_FALLBACK);
+                    }
+                } catch (error) {
+                    console.error('Error loading educational content:', error);
+                    setEducationalContent(EDUCATIONAL_CONTENT_FALLBACK);
+                } finally {
+                    setLoadingContent(false);
+                }
+            };
+
+
+            // --- Authentication Handlers ---
+            const handleLogin = (email, role) => {
+                if (role === 'student') {
+                    setUser({ name: "siswa", email, role : 0, points: 0, level: 0, badges: ['Pemula', 'Pelapor Berani'] });
+                    setView('student-home');
+                } else {
+                    setUser({ name: "Ibu Guru BK", email, role });
+                    setView('admin-home');
+                    setAdminSubView('dashboard');
+                }
+            };
+
+            const handleLogout = () => {
+                setUser(null);
+                setView('login');
+                setSelectedRole(null);
+                setLoginForm({ email: '', password: '' });
+                setAdminSubView('dashboard');
+                setMobileMenuOpen(false);
+                localStorage.removeItem('counselmate_user');
+                localStorage.removeItem('counselmate_view');
+                localStorage.removeItem('counselmate_admin_subview');
+            };
+
+            // --- Student Actions ---
+            const addPoints = (amount) => {
+                setUser(prev => ({ ...prev, points: prev.points + amount }));
+                alert(`Selamat! Kamu mendapatkan +${amount} Poin!`);
+            };
+
+            const handleQuizComplete = (points) => {
+                setView('student-home');
+                if (points > 0) {
+                    addPoints(points);
+                }
+            };
+
+            const handleCompleteContent = (content) => {
+                const completion = {
+                    id: Date.now(),
+                    contentId: content.id,
+                    contentTitle: content.title,
+                    student: user.name,
+                    points: content.points,
+                    completedAt: new Date().toISOString()
+                };
+                setCompletedContent(prev => [completion, ...prev]);
+                addPoints(content.points);
+                setSelectedContent(null);
+            };
+
+            const submitReport = (formData) => {
+                const newReport = {
+                    id: Date.now(),
+                    ...formData,
+                    date: new Date().toISOString().split('T')[0],
+                    status: 'Baru',
+                    student: formData.anonymous ? "Anonim" : user.name,
+                    studentId: formData.anonymous ? null : 1
+                };
+                setReports([newReport, ...reports]);
+                alert("Laporan berhasil dikirim! Terima kasih atas keberanianmu melaporkan. (+50 Poin)");
+                addPoints(50);
+                setView('student-home');
+            };
+
+            const submitMood = (emoji, note) => {
+                const newMood = {
+                    id: Date.now(),
+                    student: user.name,
+                    emoji: emoji,
+                    note: note,
+                    date: new Date().toISOString()
+                };
+                setMoodHistory([newMood, ...moodHistory]);
+                alert("Terima kasih sudah membagikan mood-mu hari ini! (+10 Poin)");
+                addPoints(10);
+                setView('student-home');
+            };
+
+            const submitCounseling = (formData) => {
+                const newSession = {
+                    id: Date.now(),
+                    ...formData,
+                    status: 'Pending',
+                    submittedAt: new Date().toISOString()
+                };
+                setCounselingSessions([newSession, ...counselingSessions]);
+                alert("Pengajuan sesi konseling berhasil dikirim! Mohon tunggu konfirmasi dari konselor.");
+                setView('student-home');
+            };
+
+            // --- Admin Statistics ---
+            const getStatistics = () => {
+                return {
+                    totalReports: reports.length,
+                    newReports: reports.filter(r => r.status === 'Baru').length,
+                    totalSessions: counselingSessions.length,
+                    pendingSessions: counselingSessions.filter(s => s.status === 'Pending').length,
+                    totalStudents: MOCK_STUDENTS.length,
+                    highRiskStudents: MOCK_STUDENTS.filter(s => s.risk === 'High').length
+                };
+            };
+
+            // --- RENDER VIEWS ---
+
+            if (view === 'login') {
+                if (selectedRole) {
+                    const handleLoginSubmit = (e) => {
+                        e.preventDefault();
+                        if (loginForm.email && loginForm.password) {
+                            handleLogin(loginForm.email, selectedRole);
+                        } else {
+                            alert('Mohon isi email dan password!');
+                        }
+                    };
+                    
+                    return (
+                        <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12 max-w-md w-full">
+                                <button 
+                                    onClick={() => setSelectedRole(null)}
+                                    className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800"
+                                >
+                                    <Icon name="arrow-left" size={20} />
+                                    Kembali
+                                </button>
+                                
+                                <div className="text-center mb-8">
+                                    <div className="inline-block bg-indigo-100 p-4 rounded-full mb-4">
+                                        <Icon name={selectedRole === 'student' ? 'user' : 'briefcase'} size={48} className="text-indigo-600" />
+                                    </div>
+                                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
+                                        {selectedRole === 'student' ? 'Masuk sebagai Siswa' : 'Masuk sebagai Guru BK'}
+                                    </h1>
+                                    <p className="text-sm sm:text-base text-slate-600">Silakan masukkan email dan password Anda</p>
+                                </div>
+                                
+                                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                                        <input
+                                            type="email" id="email"
+                                            value={loginForm.email}
+                                            onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                                            placeholder="nama@email.com"
+                                            className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+                                        <input
+                                            type="password" id="password"
+                                            value={loginForm.password}
+                                            onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                                            placeholder="••••••••"
+                                            className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    
+                                    <button
+                                        type="button" onClick="loginUser()"
+                                        className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition"
+                                    >
+                                        Masuk
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    );
+                }
+                
+                return (
+                    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-12 max-w-md w-full">
+                            <div className="text-center mb-8">
+                                <div className="inline-block bg-indigo-100 p-4 rounded-full mb-4">
+                                    <Icon name="shield-check" size={48} className="text-indigo-600" />
+                                </div>
+                                <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">CounselMate</h1>
+                                <p className="text-sm sm:text-base text-slate-600">Layanan BK Digital & Anti-Bullying</p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => setSelectedRole('student')}
+                                    className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                                >
+                                    <Icon name="user" size={20} />
+                                    Masuk sebagai Siswa
+                                </button>
+                                <button
+                                    onClick={() => setSelectedRole('counselor')}
+                                    className="w-full bg-slate-700 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2"
+                                >
+                                    <Icon name="briefcase" size={20} />
+                                    Masuk sebagai Guru BK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'student-home') {
+                const StudentDashboard = () => {
+                    return (
+                        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                            {/* Header Profile Card */}
+                            <div className="max-w-6xl mx-auto">
+                                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 sm:p-8 text-white mb-6 sm:mb-8 shadow-xl">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                        <div className="flex-1">
+                                            <h1 className="text-xl sm:text-2xl font-bold mb-2">Halo, {user.name}! 👋</h1>
+                                            <p className="text-indigo-100 text-sm sm:text-base">Selamat datang kembali di CounselMate</p>
+                                        </div>
+                                        <button onClick={handleLogout} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition text-sm font-medium">
+                                            <Icon name="log-out" size={18} />
+                                            Keluar
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                                        <div className="bg-white/20 backdrop-blur rounded-xl p-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon name="award" size={20} />
+                                                <span className="text-xs font-semibold">Poin XP</span>
+                                            </div>
+                                            <div className="text-2xl font-bold">{user.points}</div>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur rounded-xl p-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon name="trending-up" size={20} />
+                                                <span className="text-xs font-semibold">Level</span>
+                                            </div>
+                                            <div className="text-2xl font-bold">{user.level}</div>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur rounded-xl p-4 col-span-2 sm:col-span-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Icon name="badge-check" size={20} />
+                                                <span className="text-xs font-semibold">Badge</span>
+                                            </div>
+                                            <div className="text-sm font-bold truncate">{user.badges.join(', ')}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Cards Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                                    <button
+                                        onClick={() => setView('report-bullying')}
+                                        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group"
+                                    >
+                                        <div className="bg-red-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-200 transition">
+                                            <Icon name="alert-circle" size={24} className="text-red-600" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 mb-2">Laporkan Bullying</h3>
+                                        <p className="text-sm text-slate-600">Laporkan kejadian yang kamu atau temanmu alami dengan aman</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setView('counseling-request')}
+                                        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group"
+                                    >
+                                        <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+                                            <Icon name="calendar-check" size={24} className="text-blue-600" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 mb-2">Ajukan Konseling</h3>
+                                        <p className="text-sm text-slate-600">Jadwalkan sesi konseling dengan Guru BK</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setView('mood-tracker')}
+                                        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group"
+                                    >
+                                        <div className="bg-yellow-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:bg-yellow-200 transition">
+                                            <Icon name="smile" size={24} className="text-yellow-600" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 mb-2">Mood Tracker</h3>
+                                        <p className="text-sm text-slate-600">Catat moodmu hari ini dan pantau perkembangannya</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setView('educational-content')}
+                                        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group"
+                                    >
+                                        <div className="bg-green-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:bg-green-200 transition">
+                                            <Icon name="book-open" size={24} className="text-green-600" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 mb-2">Konten Edukasi</h3>
+                                        <p className="text-sm text-slate-600">Belajar tentang bullying dan dapatkan poin!</p>
+                                    </button>
+                                </div>
+
+                                {/* Mood Chart & Tips */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                                        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                            <Icon name="trending-up" size={20} />
+                                            Tren Mood Mingguan
+                                        </h3>
+                                        <MoodChart />
+                                    </div>
+
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                                        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                            <Icon name="lightbulb" size={20} />
+                                            Tips Hari Ini
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                                <h4 className="font-bold text-indigo-900 mb-2">💙 Ingat Selalu:</h4>
+                                                <p className="text-sm text-indigo-700">"Kamu tidak sendirian. Kami ada untuk mendukungmu."</p>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="bg-green-100 p-2 rounded-lg flex-shrink-0">
+                                                        <Icon name="check-circle" size={16} className="text-green-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-800">Jangan Diam Saja</p>
+                                                        <p className="text-xs text-slate-600">Melapor adalah langkah berani, bukan tanda kelemahan</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-3">
+                                                    <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
+                                                        <Icon name="shield" size={16} className="text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-800">Identitasmu Aman</p>
+                                                        <p className="text-xs text-slate-600">Gunakan fitur anonim untuk melaporkan dengan aman</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return <StudentDashboard />;
+            }
+
+            if (view === 'report-bullying') {
+                const ReportBullying = () => {
+                    const [formData, setFormData] = useState({
+                        title: '',
+                        type: 'Verbal',
+                        incidentDate: '',
+                        desc: '',
+                        anonymous: false
+                    });
+
+                    return (
+                        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                            <div className="max-w-2xl mx-auto animate-fade-in">
+                                <button onClick={() => setView('student-home')} className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800">
+                                    <Icon name="arrow-left" size={20} />
+                                    Kembali
+                                </button>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8">
+                                    <div className="flex items-start gap-4 mb-6">
+                                        <div className="bg-red-100 p-3 rounded-xl flex-shrink-0">
+                                            <Icon name="shield-alert" size={28} className="text-red-600" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Laporkan Bullying</h2>
+                                            <p className="text-sm sm:text-base text-slate-600">Laporanmu akan langsung diterima oleh Guru BK dan ditindaklanjuti dengan serius.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Judul Laporan</label>
+                                            <input
+                                                type="text"
+                                                value={formData.title}
+                                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                                placeholder="Contoh: Ejekan di kelas"
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Jenis Bullying</label>
+                                            <select
+                                                value={formData.type}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            >
+                                                <option value="Verbal">Verbal (Ejekan, Ancaman)</option>
+                                                <option value="Fisik">Fisik (Memukul, Mendorong)</option>
+                                                <option value="Sosial">Sosial (Dikucilkan, Rumor)</option>
+                                                <option value="Cyberbullying">Cyberbullying (Online)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Waktu Kejadian</label>
+                                            <input
+                                                type="date"
+                                                value={formData.incidentDate}
+                                                onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Ceritakan Apa yang Terjadi</label>
+                                            <textarea
+                                                value={formData.desc}
+                                                onChange={(e) => setFormData({ ...formData, desc: e.target.value })}
+                                                placeholder="Jelaskan kronologi kejadian, siapa pelaku, dan saksi yang ada..."
+                                                rows={6}
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        <div className="bg-slate-50 p-4 rounded-lg flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="anonymous"
+                                                checked={formData.anonymous}
+                                                onChange={(e) => setFormData({ ...formData, anonymous: e.target.checked })}
+                                                className="mt-1 flex-shrink-0"
+                                            />
+                                            <label htmlFor="anonymous" className="text-sm text-slate-700 cursor-pointer">
+                                                <span className="font-semibold">Laporkan secara anonim</span>
+                                                <p className="text-slate-600 mt-1">Identitasmu tidak akan ditampilkan kepada siapa pun</p>
+                                            </label>
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                if (formData.title && formData.type && formData.incidentDate && formData.desc) {
+                                                    submitReport(formData);
+                                                } else {
+                                                    alert("Mohon isi semua kolom!");
+                                                }
+                                            }}
+                                            className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition"
+                                        >
+                                            Kirim Laporan (+50 Poin)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return <ReportBullying />;
+            }
+
+            if (view === 'counseling-request') {
+                const CounselingRequest = () => {
+                    const [formData, setFormData] = useState({
+                        fullName: user.name,
+                        class: '',
+                        whatsapp: '',
+                        counselor: '',
+                        date: '',
+                        time: '',
+                        type: 'Online',
+                        reason: ''
+                    });
+
+                    return (
+                        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                            <div className="max-w-2xl mx-auto animate-fade-in">
+                                <button onClick={() => setView('student-home')} className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800">
+                                    <Icon name="arrow-left" size={20} />
+                                    Kembali
+                                </button>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-6">Ajukan Sesi Konseling</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Nama Lengkap</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.fullName}
+                                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Kelas</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.class}
+                                                    onChange={(e) => setFormData({ ...formData, class: e.target.value })}
+                                                    placeholder="Contoh: X IPA 1"
+                                                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">No. WhatsApp</label>
+                                            <input
+                                                type="tel"
+                                                value={formData.whatsapp}
+                                                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                                                placeholder="08123456789"
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Pilih Konselor</label>
+                                            <select
+                                                value={formData.counselor}
+                                                onChange={(e) => setFormData({ ...formData, counselor: e.target.value })}
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            >
+                                                <option value="">Pilih konselor...</option>
+                                                {MOCK_COUNSELORS.map(c => (
+                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Tanggal</label>
+                                                <input
+                                                    type="date"
+                                                    value={formData.date}
+                                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Jam</label>
+                                                <input
+                                                    type="time"
+                                                    value={formData.time}
+                                                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Tipe Konseling</label>
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        value="Online"
+                                                        checked={formData.type === 'Online'}
+                                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                        className="text-indigo-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Online (Video Call)</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        value="Offline"
+                                                        checked={formData.type === 'Offline'}
+                                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                        className="text-indigo-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Offline (Tatap Muka)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">Alasan / Topik yang Ingin Dibahas</label>
+                                            <textarea
+                                                value={formData.reason}
+                                                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                                placeholder="(Opsional) Ceritakan sedikit apa yang ingin kamu konsultasikan"
+                                                rows={4}
+                                                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                if (formData.class && formData.whatsapp && formData.counselor && formData.date && formData.time) {
+                                                    submitCounseling(formData);
+                                                } else {
+                                                    alert("Mohon isi semua kolom yang wajib!");
+                                                }
+                                            }}
+                                            className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition"
+                                        >
+                                            Ajukan Sesi Konseling
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return <CounselingRequest />;
+            }
+
+            if (view === 'mood-tracker') {
+                const MoodTracker = () => {
+                    const [selectedMood, setSelectedMood] = useState(null);
+                    const [note, setNote] = useState('');
+
+                    const moodOptions = [
+                        { emoji: '😢', label: 'Sangat Buruk', value: 1 },
+                        { emoji: '😟', label: 'Kurang Baik', value: 2 },
+                        { emoji: '😐', label: 'Biasa Saja', value: 3 },
+                        { emoji: '😊', label: 'Baik', value: 4 },
+                        { emoji: '😄', label: 'Sangat Senang', value: 5 },
+                    ];
+
+                    return (
+                        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                            <div className="max-w-2xl mx-auto animate-fade-in">
+                                <button onClick={() => setView('student-home')} className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800">
+                                    <Icon name="arrow-left" size={20} />
+                                    Kembali
+                                </button>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Bagaimana Mood-mu Hari Ini?</h2>
+                                    <p className="text-slate-600 mb-8 text-sm sm:text-base">Data mood-mu akan membantu kami memahami kondisi emosionalmu</p>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mb-8">
+                                        {moodOptions.map((mood) => (
+                                            <button
+                                                key={mood.value}
+                                                onClick={() => setSelectedMood(mood)}
+                                                className={`p-4 sm:p-6 rounded-2xl text-center transition-all ${selectedMood?.value === mood.value ? 'bg-indigo-100 border-2 border-indigo-500 shadow-md scale-105' : 'bg-slate-50 border-2 border-slate-200 hover:bg-slate-100'}`}
+                                            >
+                                                <div className="text-4xl sm:text-5xl mb-2 sm:mb-3">{mood.emoji}</div>
+                                                <div className="text-xs font-semibold text-slate-700">{mood.label}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                            Catatan Tambahan (Opsional)
+                                        </label>
+                                        <textarea
+                                            value={note}
+                                            onChange={(e) => setNote(e.target.value)}
+                                            placeholder="Ceritakan apa yang membuatmu merasa seperti ini hari ini..."
+                                            rows={4}
+                                            className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                        ></textarea>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            if (selectedMood) {
+                                                submitMood(selectedMood.emoji, note || 'Tidak ada catatan');
+                                            } else {
+                                                alert("Pilih mood-mu dulu!");
+                                            }
+                                        }}
+                                        disabled={!selectedMood}
+                                        className={`w-full mt-6 py-3 rounded-xl font-bold transition ${selectedMood ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
+                                    >
+                                        Simpan Mood Hari Ini (+10 Poin)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return <MoodTracker />;
+            }
+
+            if (view === 'educational-content') {
+                const EducationalContent = () => {
+                    const [selectedCategory, setSelectedCategory] = useState('All');
+                    const [quizMode, setQuizMode] = useState(false);
+
+                    const categories = ['All', 'Dasar', 'Soft Skill', 'Panduan'];
+                    
+                    const filteredContent = selectedCategory === 'All' 
+                        ? educationalContent 
+                        : educationalContent.filter(c => c.category === selectedCategory);
+
+                    if (quizMode) {
+                        return (
+                            <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                                <div className="max-w-2xl mx-auto animate-fade-in">
+                                    <button onClick={() => setQuizMode(false)} className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800">
+                                        <Icon name="arrow-left" size={20} />
+                                        Kembali ke Konten
+                                    </button>
+                                    {loadingQuiz ? (
+                                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center">
+                                            <div className="text-4xl mb-4">⏳</div>
+                                            <p className="text-slate-600">Memuat soal quiz...</p>
+                                        </div>
+                                    ) : (
+                                        <MiniGameQuiz quizData={quizQuestions} onQuizComplete={handleQuizComplete} />
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+                            <div className="max-w-6xl mx-auto animate-fade-in">
+                                <button onClick={() => setView('student-home')} className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-800">
+                                    <Icon name="arrow-left" size={20} />
+                                    Kembali
+                                </button>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8 mb-6">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Konten Edukasi Anti-Bullying</h2>
+                                    <p className="text-sm sm:text-base text-slate-600 mb-6">Belajar dan raih poin XP! Setiap konten yang kamu selesaikan akan memberikan poin.</p>
+
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {categories.map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedCategory(cat)}
+                                                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition ${selectedCategory === cat ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {loadingContent ? (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center mb-6">
+                                        <div className="text-4xl mb-4">⏳</div>
+                                        <p className="text-slate-600">Memuat konten edukasi...</p>
+                                    </div>
+                                ) : filteredContent.length === 0 ? (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center mb-6">
+                                        <div className="text-4xl mb-4">📚</div>
+                                        <p className="text-slate-600">Belum ada konten edukasi untuk kategori ini.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                                        {filteredContent.map(content => (
+                                            <div key={content.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition">
+                                                <div className="h-40 sm:h-48 bg-slate-200 overflow-hidden">
+                                                    <img src={content.image || content.imageUrl || "/placeholder.svg"} alt={content.title} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="p-4 sm:p-6">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{content.category}</span>
+                                                        <span className="text-xs text-slate-500">{content.duration || content.type}</span>
+                                                    </div>
+                                                    <h3 className="font-bold text-slate-800 text-base sm:text-lg mb-2">{content.title}</h3>
+                                                    <div className="flex items-center justify-between mt-4">
+                                                        <div className="flex items-center gap-1 text-green-600">
+                                                            <Icon name="award" size={16} />
+                                                            <span className="text-sm font-semibold">+{content.points} XP</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setSelectedContent(content)}
+                                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+                                                        >
+                                                            Mulai Belajar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl p-6 sm:p-8 text-white">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                        <div>
+                                            <h3 className="text-lg sm:text-xl font-bold mb-2">🎮 Siap Uji Pengetahuanmu?</h3>
+                                            <p className="text-sm sm:text-base text-green-50">Mainkan quiz interaktif dan raih poin bonus!</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setQuizMode(true)}
+                                            className="bg-white text-green-600 px-6 py-3 rounded-xl font-bold hover:bg-green-50 transition whitespace-nowrap"
+                                        >
+                                            Mulai Quiz
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return <EducationalContent />;
+            }
+
+            if (selectedContent) {
+                return <EducationalContentModal content={selectedContent} onClose={() => setSelectedContent(null)} onComplete={() => handleCompleteContent(selectedContent)} />;
+            }
+
+            // ===== ADMIN VIEW =====
+            if (view === 'admin-home' && user.role === 'counselor') {
+                const AdminDashboard = () => {
+                    const stats = getStatistics();
+                    
+                    return (
+                        <div className="animate-fade-in space-y-6">
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Dashboard Utama</h2>
+                                <p className="text-sm sm:text-base text-slate-600">Ringkasan data dan aktivitas siswa</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="bg-red-100 p-3 rounded-lg">
+                                            <Icon name="alert-triangle" size={24} className="text-red-600" />
+                                        </div>
+                                        <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">{stats.newReports} Baru</span>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800">{stats.totalReports}</h3>
+                                    <p className="text-sm text-slate-600 mt-1">Total Laporan</p>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="bg-blue-100 p-3 rounded-lg">
+                                            <Icon name="calendar" size={24} className="text-blue-600" />
+                                        </div>
+                                        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">{stats.pendingSessions} Pending</span>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800">{stats.totalSessions}</h3>
+                                    <p className="text-sm text-slate-600 mt-1">Sesi Konseling</p>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="bg-yellow-100 p-3 rounded-lg">
+                                            <Icon name="users" size={24} className="text-yellow-600" />
+                                        </div>
+                                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded">{stats.highRiskStudents} High Risk</span>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800">{stats.totalStudents}</h3>
+                                    <p className="text-sm text-slate-600 mt-1">Total Siswa</p>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="bg-green-100 p-3 rounded-lg">
+                                            <Icon name="book-open" size={24} className="text-green-600" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800">{educationalContent.length}</h3>
+                                    <p className="text-sm text-slate-600 mt-1">Konten Edukasi</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">Laporan Terbaru</h3>
+                                    <div className="space-y-3">
+                                        {reports.slice(0, 5).map(report => (
+                                            <div key={report.id} className="p-4 bg-slate-50 rounded-lg">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                                        report.status === 'Baru' ? 'bg-red-100 text-red-600' :
+                                                        report.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' :
+                                                        'bg-green-100 text-green-600'
+                                                    }`}>{report.status}</span>
+                                                    <span className="text-xs text-slate-500">{report.date}</span>
+                                                </div>
+                                                <p className="font-medium text-slate-800 text-sm">{report.title}</p>
+                                                <p className="text-xs text-slate-600 mt-1">{report.student}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">Sesi Konseling Pending</h3>
+                                    <div className="space-y-3">
+                                        {counselingSessions.filter(s => s.status === 'Pending').slice(0, 5).map(session => (
+                                            <div key={session.id} className="p-4 bg-slate-50 rounded-lg">
+                                                <p className="font-medium text-slate-800 text-sm mb-1">{session.fullName}</p>
+                                                <p className="text-xs text-slate-600">Konselor: {session.counselor}</p>
+                                                <p className="text-xs text-slate-500 mt-1">{session.date} • {session.time} • {session.type}</p>
+                                            </div>
+                                        ))}
+                                        {counselingSessions.filter(s => s.status === 'Pending').length === 0 && (
+                                            <p className="text-sm text-slate-500 text-center py-4">Tidak ada sesi pending</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                const AdminReports = () => {
+                    return (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="grid grid-cols-1 gap-4">
+                                {reports.map(report => (
+                                    <div key={report.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-slate-800 text-lg mb-2">{report.title}</h3>
+                                                <p className="text-sm text-slate-600 mb-2">{report.desc}</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{report.type}</span>
+                                                    <span className="text-xs text-slate-500">{report.date}</span>
+                                                    <span className="text-xs text-slate-700">Pelapor: {report.student}</span>
+                                                </div>
+                                            </div>
+                                            <select
+                                                value={report.status}
+                                                onChange={(e) => {
+                                                    const updatedReports = reports.map(r => 
+                                                        r.id === report.id ? { ...r, status: e.target.value } : r
+                                                    );
+                                                    setReports(updatedReports);
+                                                }}
+                                                className={`h-fit px-3 py-2 rounded-lg text-sm font-semibold border-2 ${
+                                                    report.status === 'Baru' ? 'bg-red-50 border-red-200 text-red-700' :
+                                                    report.status === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                                                    'bg-green-50 border-green-200 text-green-700'
+                                                }`}
+                                            >
+                                                <option value="Baru">Baru</option>
+                                                <option value="Pending">Pending</option>
+                                                <option value="Selesai">Selesai</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                };
+
+                const AdminCounselingSessions = () => {
+                    return (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="grid grid-cols-1 gap-4">
+                                {counselingSessions.length === 0 ? (
+                                    <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 text-center">
+                                        <p className="text-slate-500">Belum ada pengajuan sesi konseling</p>
+                                    </div>
+                                ) : (
+                                    counselingSessions.map(session => (
+                                        <div key={session.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                            <div className="flex flex-col sm:flex-row justify-between gap-4">
+                                                <div className="flex-1">
+                                                    <h3 className="font-bold text-slate-800 text-lg mb-2">{session.fullName}</h3>
+                                                    <div className="space-y-1 text-sm text-slate-600">
+                                                        <p>Kelas: {session.class}</p>
+                                                        <p>WhatsApp: {session.whatsapp}</p>
+                                                        <p>Konselor: {session.counselor}</p>
+                                                        <p>Jadwal: {session.date} • {session.time}</p>
+                                                        <p>Tipe: {session.type}</p>
+                                                        {session.reason && <p className="mt-2">Alasan: {session.reason}</p>}
+                                                    </div>
+                                                </div>
+                                                <select
+                                                    value={session.status}
+                                                    onChange={(e) => {
+                                                        const updated = counselingSessions.map(s =>
+                                                            s.id === session.id ? { ...s, status: e.target.value } : s
+                                                        );
+                                                        setCounselingSessions(updated);
+                                                    }}
+                                                    className={`h-fit px-3 py-2 rounded-lg text-sm font-semibold border-2 ${
+                                                        session.status === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                                                        session.status === 'Disetujui' ? 'bg-green-50 border-green-200 text-green-700' :
+                                                        'bg-slate-50 border-slate-200 text-slate-700'
+                                                    }`}
+                                                >
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="Disetujui">Disetujui</option>
+                                                    <option value="Selesai">Selesai</option>
+                                                    <option value="Dibatalkan">Dibatalkan</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    );
+                };
+
+                const AdminMoodMonitor = () => {
+                    return (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                <h3 className="font-bold text-slate-800 mb-4">Tren Mood Siswa Minggu Ini</h3>
+                                <MoodChart />
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                {moodHistory.length === 0 ? (
+                                    <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 text-center">
+                                        <p className="text-slate-500">Belum ada data mood</p>
+                                    </div>
+                                ) : (
+                                    moodHistory.map(mood => (
+                                        <div key={mood.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                            <div className="flex items-start gap-4">
+                                                <div className="text-4xl">{mood.emoji}</div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-slate-800">{mood.student}</h4>
+                                                    <p className="text-sm text-slate-600 mt-1">{mood.note}</p>
+                                                    <p className="text-xs text-slate-400 mt-2">
+                                                        {new Date(mood.date).toLocaleDateString('id-ID', { 
+                                                            weekday: 'long', 
+                                                            year: 'numeric', 
+                                                            month: 'long', 
+                                                            day: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    );
+                };
+
+                const AdminStudents = () => {
+                    return (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {MOCK_STUDENTS.map(student => (
+                                    <div key={student.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center text-indigo-600 font-bold text-lg">
+                                                {student.name.charAt(0)}
+                                            </div>
+                                            <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                                student.risk === 'High' ? 'bg-red-100 text-red-600' :
+                                                student.risk === 'Medium' ? 'bg-yellow-100 text-yellow-600' :
+                                                'bg-green-100 text-green-600'
+                                            }`}>{student.risk} Risk</span>
+                                        </div>
+                                        <h3 className="font-bold text-slate-800 mb-1">{student.name}</h3>
+                                        <p className="text-sm text-slate-600 mb-3">{student.class}</p>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-600">Points:</span>
+                                            <span className="font-bold text-green-600">{student.points} XP</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm mt-2">
+                                            <span className="text-slate-600">Last Mood:</span>
+                                            <span className="text-2xl">{student.lastMood}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                };
+
+                const AdminContentManagement = () => {
+                    const [showForm, setShowForm] = useState(false);
+                    const [editingContent, setEditingContent] = useState(null);
+                    const [formData, setFormData] = useState({
+                        title: '',
+                        type: 'Video',
+                        category: 'Dasar',
+                        imageUrl: '',
+                        videoUrl: '',
+                        content: '',
+                        points: 20,
+                        duration: ''
+                    });
+
+                    const resetForm = () => {
+                        setFormData({
+                            title: '',
+                            type: 'Video',
+                            category: 'Dasar',
+                            imageUrl: '',
+                            videoUrl: '',
+                            content: '',
+                            points: 20,
+                            duration: ''
+                        });
+                        setEditingContent(null);
+                        setShowForm(false);
+                    };
+
+                    const handleEdit = (content) => {
+                        setFormData({
+                            title: content.title,
+                            type: content.type,
+                            category: content.category,
+                            imageUrl: content.image || content.imageUrl || '',
+                            videoUrl: content.videoUrl || '',
+                            content: content.content,
+                            points: content.points,
+                            duration: content.duration || ''
+                        });
+                        setEditingContent(content);
+                        setShowForm(true);
+                    };
+
+                    const handleSubmit = async (e) => {
+                        e.preventDefault();
+                        
+                        const contentData = {
+                            title: formData.title,
+                            type: formData.type,
+                            category: formData.category,
+                            imageUrl: formData.imageUrl,
+                            videoUrl: formData.videoUrl,
+                            content: formData.content,
+                            points: parseInt(formData.points),
+                            duration: formData.duration,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+
+                        try {
+                            if (editingContent) {
+                                await db.collection('educational_content').doc(editingContent.id).update(contentData);
+                                alert('Konten berhasil diperbarui!');
+                            } else {
+                                await db.collection('educational_content').add(contentData);
+                                alert('Konten berhasil ditambahkan!');
+                            }
+                            resetForm();
+                            loadEducationalContent();
+                        } catch (error) {
+                            console.error('Error saving content:', error);
+                            alert('Gagal menyimpan konten. Silakan coba lagi.');
+                        }
+                    };
+
+                    const handleDelete = async (id) => {
+                        if (confirm('Yakin ingin menghapus konten ini?')) {
+                            try {
+                                await db.collection('educational_content').doc(id).delete();
+                                alert('Konten berhasil dihapus!');
+                                loadEducationalContent();
+                            } catch (error) {
+                                console.error('Error deleting content:', error);
+                                alert('Gagal menghapus konten. Silakan coba lagi.');
+                            }
+                        }
+                    };
+
+                    return (
+                        <div className="animate-fade-in">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-lg sm:text-xl font-bold text-slate-800">Manajemen Konten Edukasi</h2>
+                                    <p className="text-sm text-slate-600 mt-1">{educationalContent.length} konten tersedia</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowForm(!showForm)}
+                                    className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                                >
+                                    <Icon name={showForm ? 'x' : 'plus'} size={20} />
+                                    {showForm ? 'Tutup Form' : 'Tambah Konten Baru'}
+                                </button>
+                            </div>
+
+                            {showForm && (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-6 animate-fade-in">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4">
+                                        {editingContent ? 'Edit Konten Edukasi' : 'Tambah Konten Edukasi Baru'}
+                                    </h3>
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Judul Konten</label>
+                                            <input
+                                                type="text"
+                                                value={formData.title}
+                                                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                placeholder="Contoh: Apa itu Bullying?"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Jenis Konten</label>
+                                                <select
+                                                    value={formData.type}
+                                                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    required
+                                                >
+                                                    <option value="Video">Video</option>
+                                                    <option value="Infografis">Infografis</option>
+                                                    <option value="Artikel">Artikel</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Kategori</label>
+                                                <select
+                                                    value={formData.category}
+                                                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    required
+                                                >
+                                                    <option value="Dasar">Dasar</option>
+                                                    <option value="Soft Skill">Soft Skill</option>
+                                                    <option value="Panduan">Panduan</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Durasi</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.duration}
+                                                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="Contoh: 3 min"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">URL Gambar Thumbnail</label>
+                                            <input
+                                                type="url"
+                                                value={formData.imageUrl}
+                                                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                placeholder="https://example.com/image.jpg"
+                                            />
+                                        </div>
+
+                                        {formData.type === 'Video' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Link Video YouTube</label>
+                                                <input
+                                                    type="url"
+                                                    value={formData.videoUrl}
+                                                    onChange={(e) => setFormData({...formData, videoUrl: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="https://www.youtube.com/watch?v=..."
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Isi Konten (HTML)</label>
+                                            <textarea
+                                                value={formData.content}
+                                                onChange={(e) => setFormData({...formData, content: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition font-mono text-sm"
+                                                rows="8"
+                                                placeholder="<h3>Judul</h3><p>Konten...</p>"
+                                                required
+                                            />
+                                            <p className="text-xs text-slate-500 mt-1">Anda bisa menggunakan HTML untuk formatting (h3, p, ul, li, dll)</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Poin XP</label>
+                                            <input
+                                                type="number"
+                                                value={formData.points}
+                                                onChange={(e) => setFormData({...formData, points: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                min="1"
+                                                max="100"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                type="submit"
+                                                className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                                            >
+                                                <Icon name="save" size={20} />
+                                                {editingContent ? 'Perbarui Konten' : 'Simpan Konten'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={resetForm}
+                                                className="w-full sm:w-auto bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-300 transition"
+                                            >
+                                                Batal
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                {educationalContent.map(content => {
+                                    const completions = completedContent.filter(c => c.contentId === content.id);
+                                    
+                                    return (
+                                        <div key={content.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                            <div className="h-32 bg-slate-200 overflow-hidden">
+                                                <img src={content.image || content.imageUrl || "/placeholder.svg"} alt={content.title} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="p-4 sm:p-6">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{content.category}</span>
+                                                    <span className="text-xs text-slate-500">{content.type}</span>
+                                                </div>
+                                                <h3 className="font-bold text-slate-800 mb-4 text-sm sm:text-base">{content.title}</h3>
+                                                
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-slate-600">Diselesaikan:</span>
+                                                        <span className="font-bold text-slate-800">{completions.length} siswa</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-slate-600">Total Poin:</span>
+                                                        <span className="font-bold text-green-600">+{content.points} XP</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-2 mt-4">
+                                                    <button
+                                                        onClick={() => handleEdit(content)}
+                                                        className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <Icon name="edit" size={16} />
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(content.id)}
+                                                        className="flex-1 bg-red-50 text-red-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <Icon name="trash-2" size={16} />
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {completedContent.length > 0 && (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 mt-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">Aktivitas Terbaru</h3>
+                                    <div className="space-y-3">
+                                        {completedContent.slice(0, 10).map(completion => (
+                                            <div key={completion.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg gap-3">
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className="bg-green-100 p-2 rounded-lg flex-shrink-0">
+                                                        <Icon name="check-circle" size={16} className="text-green-600" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-medium text-slate-800 text-sm truncate">{completion.student}</p>
+                                                        <p className="text-xs text-slate-500 truncate">menyelesaikan: {completion.contentTitle}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="text-xs font-semibold text-green-600">+{completion.points} XP</p>
+                                                    <p className="text-xs text-slate-400 whitespace-nowrap">
+                                                        {new Date(completion.completedAt).toLocaleDateString('id-ID', { 
+                                                            month: 'short', 
+                                                            day: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+
+                const AdminQuizBank = () => {
+                    const [showForm, setShowForm] = useState(false);
+                    const [editingQuestion, setEditingQuestion] = useState(null);
+                    const [formData, setFormData] = useState({
+                        question: '',
+                        optionA: '',
+                        optionB: '',
+                        optionC: '',
+                        optionD: '',
+                        correctAnswer: 'A'
+                    });
+
+                    const resetForm = () => {
+                        setFormData({
+                            question: '',
+                            optionA: '',
+                            optionB: '',
+                            optionC: '',
+                            optionD: '',
+                            correctAnswer: 'A'
+                        });
+                        setEditingQuestion(null);
+                        setShowForm(false);
+                    };
+
+                    const handleEdit = (question) => {
+                        setFormData({
+                            question: question.question,
+                            optionA: question.options[0],
+                            optionB: question.options[1],
+                            optionC: question.options[2],
+                            optionD: question.options[3],
+                            correctAnswer: String.fromCharCode(65 + question.correctIndex)
+                        });
+                        setEditingQuestion(question);
+                        setShowForm(true);
+                    };
+
+                    const handleSubmit = async (e) => {
+                        e.preventDefault();
+                        
+                        const questionData = {
+                            question: formData.question,
+                            options: [formData.optionA, formData.optionB, formData.optionC, formData.optionD],
+                            correctIndex: formData.correctAnswer.charCodeAt(0) - 65,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+
+                        try {
+                            if (editingQuestion) {
+                                await db.collection('quiz_questions').doc(editingQuestion.id).update(questionData);
+                                alert('Soal berhasil diperbarui!');
+                            } else {
+                                await db.collection('quiz_questions').add(questionData);
+                                alert('Soal berhasil ditambahkan!');
+                            }
+                            resetForm();
+                            loadQuizQuestions();
+                        } catch (error) {
+                            console.error('Error saving question:', error);
+                            alert('Gagal menyimpan soal. Silakan coba lagi.');
+                        }
+                    };
+
+                    const handleDelete = async (id) => {
+                        if (confirm('Yakin ingin menghapus soal ini?')) {
+                            try {
+                                await db.collection('quiz_questions').doc(id).delete();
+                                alert('Soal berhasil dihapus!');
+                                loadQuizQuestions();
+                            } catch (error) {
+                                console.error('Error deleting question:', error);
+                                alert('Gagal menghapus soal. Silakan coba lagi.');
+                            }
+                        }
+                    };
+
+                    return (
+                        <div className="animate-fade-in">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-lg sm:text-xl font-bold text-slate-800">Bank Soal Quiz</h2>
+                                    <p className="text-sm text-slate-600 mt-1">{quizQuestions.length} soal tersedia</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowForm(!showForm)}
+                                    className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                                >
+                                    <Icon name={showForm ? 'x' : 'plus'} size={20} />
+                                    {showForm ? 'Tutup Form' : 'Tambah Soal Baru'}
+                                </button>
+                            </div>
+
+                            {showForm && (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-6 animate-fade-in">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4">
+                                        {editingQuestion ? 'Edit Soal Quiz' : 'Tambah Soal Quiz Baru'}
+                                    </h3>
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Pertanyaan</label>
+                                            <textarea
+                                                value={formData.question}
+                                                onChange={(e) => setFormData({...formData, question: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                rows="3"
+                                                placeholder="Tulis pertanyaan quiz di sini..."
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan A</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.optionA}
+                                                    onChange={(e) => setFormData({...formData, optionA: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="Pilihan jawaban A"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan B</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.optionB}
+                                                    onChange={(e) => setFormData({...formData, optionB: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="Pilihan jawaban B"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan C</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.optionC}
+                                                    onChange={(e) => setFormData({...formData, optionC: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="Pilihan jawaban C"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan D</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.optionD}
+                                                    onChange={(e) => setFormData({...formData, optionD: e.target.value})}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                    placeholder="Pilihan jawaban D"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Jawaban Benar</label>
+                                            <select
+                                                value={formData.correctAnswer}
+                                                onChange={(e) => setFormData({...formData, correctAnswer: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                                                required
+                                            >
+                                                <option value="A">A - {formData.optionA || 'Pilihan A'}</option>
+                                                <option value="B">B - {formData.optionB || 'Pilihan B'}</option>
+                                                <option value="C">C - {formData.optionC || 'Pilihan C'}</option>
+                                                <option value="D">D - {formData.optionD || 'Pilihan D'}</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                type="submit"
+                                                className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                                            >
+                                                <Icon name="save" size={20} />
+                                                {editingQuestion ? 'Perbarui Soal' : 'Simpan Soal'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={resetForm}
+                                                className="w-full sm:w-auto bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-300 transition"
+                                            >
+                                                Batal
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {loadingQuiz ? (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
+                                    <div className="text-4xl mb-4">⏳</div>
+                                    <p className="text-slate-600">Memuat soal quiz...</p>
+                                </div>
+                            ) : quizQuestions.length === 0 ? (
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
+                                    <div className="text-4xl mb-4">📝</div>
+                                    <p className="text-slate-600">Belum ada soal quiz. Tambahkan soal pertama!</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {quizQuestions.map((question, index) => (
+                                        <div key={question.id} className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                                            <div className="flex items-start justify-between gap-4 mb-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">
+                                                            Soal #{index + 1}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-slate-800 text-lg mb-3">{question.question}</h4>
+                                                    <div className="space-y-2">
+                                                        {question.options.map((option, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`p-3 rounded-lg text-sm ${
+                                                                    idx === question.correctIndex
+                                                                        ? 'bg-green-50 border-2 border-green-200 text-green-700 font-semibold'
+                                                                        : 'bg-slate-50 border border-slate-200 text-slate-700'
+                                                                }`}
+                                                            >
+                                                                {String.fromCharCode(65 + idx)}. {option}
+                                                                {idx === question.correctIndex && ' ✓ (Jawaban Benar)'}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 pt-4 border-t border-slate-200">
+                                                <button
+                                                    onClick={() => handleEdit(question)}
+                                                    className="flex-1 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center justify-center gap-2"
+                                                >
+                                                    <Icon name="edit" size={16} />
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(question.id)}
+                                                    className="flex-1 bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-2"
+                                                >
+                                                    <Icon name="trash-2" size={16} />
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+
+                const renderAdminView = () => {
+                    switch (adminSubView) {
+                        case 'reports':
+                            return <AdminReports />;
+                        case 'counseling-sessions':
+                            return <AdminCounselingSessions />;
+                        case 'mood-monitor':
+                            return <AdminMoodMonitor />;
+                        case 'students':
+                            return <AdminStudents />;
+                        case 'content-management':
+                            return <AdminContentManagement />;
+                        case 'quiz-bank':
+                            return <AdminQuizBank />;
+                        case 'dashboard':
+                        default:
+                            return <AdminDashboard />;
+                    }
+                };
+
+
+                return (
+                    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+                        {/* Mobile Menu Button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="lg:hidden fixed bottom-4 right-4 z-50 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition"
+                        >
+                            <Icon name={mobileMenuOpen ? "x" : "menu"} size={24} />
+                        </button>
+
+                        {/* Sidebar Overlay for mobile */}
+                        {mobileMenuOpen && (
+                            <div
+                                className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                                onClick={() => setMobileMenuOpen(false)}
+                            ></div>
+                        )}
+
+                        {/* Sidebar */}
+                        <aside className={`
+                            fixed lg:relative
+                            inset-y-0 left-0
+                            w-72 lg:w-80
+                            bg-white border-r border-slate-200
+                            flex flex-col
+                            transition-transform duration-300 ease-in-out
+                            z-40
+                            ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                        `}>
+                            <div className="p-6 border-b border-slate-200">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="bg-indigo-100 p-2 rounded-lg">
+                                        <Icon name="shield-check" size={24} className="text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <h1 className="font-bold text-slate-800">CounselMate</h1>
+                                        <p className="text-xs text-slate-500">Admin Portal</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-3 bg-indigo-50 rounded-lg">
+                                    <p className="text-sm font-semibold text-indigo-900 truncate">{user.name}</p>
+                                    <p className="text-xs text-indigo-600">Guru Bimbingan Konseling</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="p-6">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-4">Menu Guru BK</h3>
+                                    <nav className="space-y-2">
+                                        {[
+                                            { name: 'Dashboard Utama', icon: 'layout-dashboard', view: 'dashboard' },
+                                            { name: 'Laporan Masuk', icon: 'inbox', view: 'reports' },
+                                            { name: 'Sesi Konseling', icon: 'calendar-check', view: 'counseling-sessions' },
+                                            { name: 'Monitor Mood', icon: 'smile', view: 'mood-monitor' },
+                                            { name: 'Data Siswa', icon: 'users', view: 'students' },
+                                            { name: 'Konten Edukasi', icon: 'edit', view: 'content-management' },
+                                            { name: 'Bank Soal Quiz', icon: 'file-question', view: 'quiz-bank' },
+                                        ].map(item => (
+                                            <button
+                                                key={item.view}
+                                                onClick={() => {
+                                                    setAdminSubView(item.view);
+                                                    setMobileMenuOpen(false);
+                                                }}
+                                                className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${adminSubView === item.view ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                <Icon name={item.icon} size={20} /> 
+                                                {item.name}
+                                            </button>
+                                        ))}
+                                    </nav>
+                                </div>
+                            </div>
+
+                            <div className="p-6 border-t border-slate-200">
+                                <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-slate-600 hover:text-slate-800 px-4 py-3 rounded-lg hover:bg-slate-50 transition font-medium">
+                                    <Icon name="log-out" size={20} />
+                                    Keluar
+                                </button>
+                            </div>
+                        </aside>
+
+                        {/* Main Content */}
+                        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+                                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{
+                                    adminSubView === 'dashboard' ? 'Dashboard Utama' :
+                                    adminSubView === 'reports' ? 'Laporan Masuk' :
+                                    adminSubView === 'counseling-sessions' ? 'Pengajuan Sesi Konseling' :
+                                    adminSubView === 'mood-monitor' ? 'Monitor Mood Siswa' :
+                                    adminSubView === 'students' ? 'Data Siswa & Aktivitas' :
+                                    adminSubView === 'quiz-bank' ? 'Bank Soal Quiz' :
+                                    'Manajemen Konten Edukasi'
+                                }</h1>
+                            </div>
+                            {renderAdminView()}
+                        </main>
+                    </div>
+                );
+            }
+
+            return <div>Invalid view</div>;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbz8qMvNTZixLe6ILq1uUOhWN-ZTHuxIYflURuTW6QwczYyb1JS1cMyKW5bNXdCPaiYM/exec";
+
+async function loginUser() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  if (!email || !password) {
+    alert("Email dan password wajib diisi");
+    return;
+  }
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({ email, password })
+  });
+
+  const result = await response.json();
+
+  if (result.status === "success") {
+    alert("Login berhasil sebagai " + result.role);
+
+    localStorage.setItem("user", JSON.stringify(result));
+
+    if (result.role === "guru") {
+      window.location.href = "guru.html";
+    } else {
+      window.location.href = "siswa.html";
+    }
+  } else {
+    alert("Email atau password salah");
+  }
+}
+</script>
+
+</body>
+</html>

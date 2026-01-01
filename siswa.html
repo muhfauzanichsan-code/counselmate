@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Siswa</title>
+</head>
+<body>
+
+  <h2 id="namaSiswa"></h2>
+  <p id="poinSiswa"></p>
+
+  <button onclick="tambahPoin(5)">
+    Selesai membaca materi (+5 poin)
+  </button>
+
+  <br><br>
+
+  <button onclick="logout()">Logout</button>
+
+  <script>
+    // GANTI dengan URL Apps Script kamu
+    const API_URL = "https://script.google.com/macros/s/AKfycbz8qMvNTZixLe6ILq1uUOhWN-ZTHuxIYflURuTW6QwczYyb1JS1cMyKW5bNXdCPaiYM/exec";
+
+    // Ambil data user dari login
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    // Cegah akses kalau belum login
+    if (!user || user.role !== "siswa") {
+      alert("Silakan login sebagai siswa");
+      window.location.href = "index.html";
+    }
+
+    // Tampilkan data siswa
+    document.getElementById("namaSiswa").innerText =
+      "Halo, " + user.nama;
+
+    document.getElementById("poinSiswa").innerText =
+      "Poin kamu: " + user.poin;
+
+    async function tambahPoin(jumlah) {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          tambah: jumlah,
+          action: "updatePoin"
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        user.poin = result.poin;
+        localStorage.setItem("user", JSON.stringify(user));
+        document.getElementById("poinSiswa").innerText =
+          "Poin kamu: " + result.poin;
+      } else {
+        alert("Gagal menambah poin");
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "index.html";
+    }
+  </script>
+
+</body>
+</html>
